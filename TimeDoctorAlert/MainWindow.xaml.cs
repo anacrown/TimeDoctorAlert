@@ -17,7 +17,9 @@ namespace TimeDoctorAlert
 
         private readonly CancellationTokenSource _cancellationTokenSource = new();
 
-        private readonly Func<WindowInfo, bool>  _filter = w => w.IsForeground && w.ProcessName == "Time Doctor";
+        private readonly Func<WindowInfo, bool>  _filter = w => w.ProcessName == "Time Doctor" && 
+                                                                w.Rect.Right - w.Rect.Left > 550 && 
+                                                                w.Rect.Bottom - w.Rect.Top > 100;
 
         public MainWindow()
         {
@@ -51,46 +53,57 @@ namespace TimeDoctorAlert
         {
             while (cancellationToken.IsCancellationRequested == false)
             {
-                cancellationToken.ThrowIfCancellationRequested();
+                if (cancellationToken.IsCancellationRequested)
+                {
+                    Log.Information("MonitorWindow: Cancellation requested");
+                    break;
+                }
 
                 var windowsCount = _wrapper.UpdateWindowList(_filter);
 
-                if (windowsCount > _windowsCount)
+                if (windowsCount > 0)
                     await CheckActivityAndPlaySound(cancellationToken);
-
-                if (windowsCount != _windowsCount)
-                {
-                    Log.Information("Set windows count: {Count}", windowsCount);
-                    _windowsCount = windowsCount;
-                }
 
                 await Task.Delay(500, cancellationToken);
             }
         }
         private async Task CheckActivityAndPlaySound(CancellationToken cancellationToken)
         {
-            var idleThreshold = TimeSpan.FromSeconds(1);
+            Log.Information("CheckActivityAndPlaySound start");
 
             var counter = 0;
 
             const int beepDelay = 1000;
             const int maxCounter = 90;
 
-            while (GetIdleTime() > idleThreshold)
+            while (true)
             {
-                cancellationToken.ThrowIfCancellationRequested();
+                if (cancellationToken.IsCancellationRequested)
+                {
+                    Log.Information("CheckActivityAndPlaySound: Cancellation requested");
+                    break;
+                }
 
+                Log.Information("Beep");
                 SystemSounds.Hand.Play();
 
-                var windowsCount = _wrapper.UpdateWindowList(_filter);
-                if (windowsCount <= _windowsCount)
+                if (_wrapper.UpdateWindowList(_filter) == 0)
                 {
-                    Log.Information("Time Doctor window closed, {Count}", windowsCount);
+                    Log.Information("Time Doctor window closed");
+                    break;
+                }
+
+                if (GetIdleTime() < TimeSpan.FromSeconds(1))
+                {
+                    Log.Information("User is active");
                     break;
                 }
 
                 if (counter++ > maxCounter)
+                {
+                    Log.Information("Max counter reached");
                     break;
+                }
 
                 await Task.Delay(beepDelay, cancellationToken);
             }
