@@ -17,14 +17,14 @@ namespace TimeDoctorAlert
 
         private readonly CancellationTokenSource _cancellationTokenSource = new();
 
-        private readonly Func<WindowInfo, bool>  _filter = w => w.ProcessName == "Time Doctor" && 
-                                                                w.Rect.Right - w.Rect.Left > 550 && 
+        private readonly Func<WindowInfo, bool> _filter = w => w.ProcessName == "Time Doctor" &&
+                                                                w.Rect.Right - w.Rect.Left > 550 &&
                                                                 w.Rect.Bottom - w.Rect.Top > 100;
 
         public MainWindow()
         {
             Log.Logger = new LoggerConfiguration()
-                .WriteTo.Seq("http://localhost:5341")
+                .WriteTo.Seq(Properties.Resources.SeqUrl)
                 .CreateLogger();
 
             InitializeComponent();
@@ -61,8 +61,14 @@ namespace TimeDoctorAlert
 
                 var windowsCount = _wrapper.UpdateWindowList(_filter);
 
-                if (windowsCount > 0)
+                if (windowsCount > _windowsCount)
                     await CheckActivityAndPlaySound(cancellationToken);
+
+                if (_windowsCount != windowsCount)
+                {
+                    Log.Information($"Windows count changed: {_windowsCount} -> {windowsCount}");
+                    _windowsCount = windowsCount;
+                }
 
                 await Task.Delay(500, cancellationToken);
             }

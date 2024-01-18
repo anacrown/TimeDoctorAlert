@@ -69,5 +69,14 @@ namespace TimeDoctorAlert.Properties {
                 return ((System.Drawing.Icon)(obj));
             }
         }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to http://172.26.128.1:5341.
+        /// </summary>
+        internal static string SeqUrl {
+            get {
+                return ResourceManager.GetString("SeqUrl", resourceCulture);
+            }
+        }
     }
 }
