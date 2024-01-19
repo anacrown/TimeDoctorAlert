@@ -76,43 +76,62 @@ namespace TimeDoctorAlert
         private async Task CheckActivityAndPlaySound(CancellationToken cancellationToken)
         {
             Log.Information("CheckActivityAndPlaySound start");
+            
+            var cancellationTokenSource = new CancellationTokenSource();
+            var playSirenTask = PlaySirenAsync(cancellationTokenSource.Token);
 
-            var counter = 0;
-
-            const int beepDelay = 1000;
-            const int maxCounter = 90;
-
-            while (true)
+            try
             {
-                if (cancellationToken.IsCancellationRequested)
+                var start = DateTime.Now;
+                while (true)
                 {
-                    Log.Information("CheckActivityAndPlaySound: Cancellation requested");
-                    break;
+                    if (_wrapper.UpdateWindowList(_filter) <=  _windowsCount)
+                    {
+                        Log.Information("Time Doctor window closed");
+                        break;
+                    }
+
+                    if (GetIdleTime() < TimeSpan.FromMilliseconds(400))
+                    {
+                        Log.Information("User is active");
+                        break;
+                    }
+
+                    if (DateTime.Now - start > TimeSpan.FromMinutes(1))
+                    {
+                        Log.Information("User is inactive for 1 minute");
+                        break;
+                    }
+
+                    cancellationToken.ThrowIfCancellationRequested();
                 }
-
-                Log.Information("Beep");
-                SystemSounds.Hand.Play();
-
-                if (_wrapper.UpdateWindowList(_filter) == 0)
-                {
-                    Log.Information("Time Doctor window closed");
-                    break;
-                }
-
-                if (GetIdleTime() < TimeSpan.FromSeconds(1))
-                {
-                    Log.Information("User is active");
-                    break;
-                }
-
-                if (counter++ > maxCounter)
-                {
-                    Log.Information("Max counter reached");
-                    break;
-                }
-
-                await Task.Delay(beepDelay, cancellationToken);
             }
+            finally
+            {
+                cancellationTokenSource.Cancel();
+                try
+                {
+                    await playSirenTask;
+                }
+                catch (OperationCanceledException)
+                {
+                    Log.Information("Siren playback was successfully stopped");
+                }
+            }
+        }
+
+        private async Task PlaySirenAsync(CancellationToken cancellationToken)
+        {
+            var highFreq = 1000;
+            var duration = 1000;
+
+            while (!cancellationToken.IsCancellationRequested)
+            {
+                Console.Beep(highFreq, 100);
+                await Task.Delay(duration, cancellationToken);
+            }
+
+            cancellationToken.ThrowIfCancellationRequested();
         }
 
         protected override void OnStateChanged(EventArgs e)

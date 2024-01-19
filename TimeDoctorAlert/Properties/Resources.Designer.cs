@@ -71,7 +71,7 @@ namespace TimeDoctorAlert.Properties {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to http://172.26.128.1:5341.
+        ///   Looks up a localized string similar to http://172.27.80.1:5341.
         /// </summary>
         internal static string SeqUrl {
             get {
