@@ -119,19 +119,119 @@ namespace TimeDoctorAlert
                 }
             }
         }
-
-        private async Task PlaySirenAsync(CancellationToken cancellationToken)
+        public class NoteSequence
         {
-            var highFreq = 1000;
-            var duration = 1000;
+            public List<(int Frequency, int Duration)> Notes { get; set; } = [];
+            public int RepeatCount { get; set; }
+            public int PauseAfter { get; set; }
+        }
 
-            while (!cancellationToken.IsCancellationRequested)
+        private static async Task PlaySirenAsync(CancellationToken cancellationToken)
+        {
+            var sequences = new List<NoteSequence>
             {
-                Console.Beep(highFreq, 100);
-                await Task.Delay(duration, cancellationToken);
-            }
+                new()
+                {
+                    Notes =
+                    [
+                        (440, 500), (440, 500), (440, 500), (349, 350), (523, 150),
+                        (440, 500), (349, 350), (523, 150), (440, 1000)
+                    ],
+                    RepeatCount = 1,
+                    PauseAfter = 0
+                },
+                new()
+                {
+                    Notes =
+                    [
+                        (659, 500), (659, 500), (659, 500), (698, 350), (523, 150),
+                        (415, 500), (349, 350), (523, 150), (440, 1000)
+                    ],
+                    RepeatCount = 1,
+                    PauseAfter = 0
+                },
+                new()
+                {
+                    Notes =
+                    [
+                        (880, 500), (440, 350), (440, 150), (880, 500), (830, 250),
+                        (784, 250), (740, 125), (698, 125), (740, 250)
+                    ],
+                    RepeatCount = 1,
+                    PauseAfter = 250
+                },
+                new()
+                {
+                    Notes =
+                    [
+                        (455, 250), (622, 500), (587, 250), (554, 250), (523, 125),
+                        (466, 125), (523, 250)
+                    ],
+                    RepeatCount = 1,
+                    PauseAfter = 250
+                },
+                new()
+                {
+                    Notes =
+                    [
+                        (349, 125), (415, 500), (349, 375), (440, 125),
+                        (523, 500), (440, 375), (523, 125), (659, 1000)
+                    ],
+                    RepeatCount = 1,
+                    PauseAfter = 0
+                },
+                new()
+                {
+                    Notes =
+                    [
+                        (880, 500), (440, 350), (440, 150), (880, 500), (830, 250),
+                        (784, 250), (740, 125), (698, 125), (740, 250)
+                    ],
+                    RepeatCount = 1,
+                    PauseAfter = 250
+                },
+                new()
+                {
+                    Notes =
+                    [
+                        (455, 250), (622, 500), (587, 250), (554, 250), (523, 125),
+                        (466, 125), (523, 250)
+                    ],
+                    RepeatCount = 1,
+                    PauseAfter = 250
+                },
+                new()
+                {
+                    Notes =
+                    [
+                        (349, 250), (415, 500), (349, 375), (523, 125),
+                        (440, 500), (349, 375), (261, 125), (440, 1000)
+                    ],
+                    RepeatCount = 1,
+                    PauseAfter = 100
+                }
+            };
+
+            while (cancellationToken.IsCancellationRequested == false)
+                foreach (var sequence in sequences)
+                    for (var i = 0; i < sequence.RepeatCount; i++)
+                    {
+                        foreach (var note in sequence.Notes)
+                            await BeepAsync(note.Frequency, note.Duration, cancellationToken);
+                        if (sequence.PauseAfter > 0)
+                            await Task.Delay(sequence.PauseAfter, cancellationToken);
+                    }
 
             cancellationToken.ThrowIfCancellationRequested();
+        }
+
+        private static async Task BeepAsync(int frequency, int duration, CancellationToken cancellationToken)
+        {
+            await Task.Run(() =>
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                Console.Beep(frequency, duration);
+            }, cancellationToken);
         }
 
         protected override void OnStateChanged(EventArgs e)
