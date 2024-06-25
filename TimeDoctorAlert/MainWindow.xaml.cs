@@ -1,8 +1,11 @@
-﻿using System.Media;
+﻿using System.IO;
+using System.Reflection;
 using System.Windows;
 using System.Windows.Forms;
+using NAudio.Wave;
 using Serilog;
 using static TimeDoctorAlert.ApiWrapper;
+using Application = System.Windows.Application;
 using Window = System.Windows.Window;
 
 
@@ -53,49 +56,57 @@ namespace TimeDoctorAlert
         {
             while (cancellationToken.IsCancellationRequested == false)
             {
-                if (cancellationToken.IsCancellationRequested)
+                try
                 {
-                    Log.Information("MonitorWindow: Cancellation requested");
-                    break;
+                    if (cancellationToken.IsCancellationRequested)
+                    {
+                        Log.Information("MonitorWindow: Cancellation requested");
+                        break;
+                    }
+
+                    var windowsCount = _wrapper.UpdateWindowList(_filter);
+
+                    if (windowsCount > _windowsCount)
+                        await CheckActivityAndPlaySound(cancellationToken);
+
+                    if (_windowsCount != windowsCount)
+                    {
+                        Log.Information($"Windows count changed: {_windowsCount} -> {windowsCount}");
+                        _windowsCount = windowsCount;
+                    }
                 }
-
-                var windowsCount = _wrapper.UpdateWindowList(_filter);
-
-                if (windowsCount > _windowsCount)
-                    await CheckActivityAndPlaySound(cancellationToken);
-
-                if (_windowsCount != windowsCount)
+                catch (Exception e)
                 {
-                    Log.Information($"Windows count changed: {_windowsCount} -> {windowsCount}");
-                    _windowsCount = windowsCount;
+                    Log.Error(e, "MonitorWindow: Error");
                 }
 
                 await Task.Delay(500, cancellationToken);
             }
         }
+
         private async Task CheckActivityAndPlaySound(CancellationToken cancellationToken)
         {
             Log.Information("CheckActivityAndPlaySound start");
-            
+
             var cancellationTokenSource = new CancellationTokenSource();
-            var playSirenTask = PlaySirenAsync(cancellationTokenSource.Token);
+            var playSirenTask = Play(cancellationTokenSource.Token);
 
             try
             {
                 var start = DateTime.Now;
                 while (true)
                 {
-                    if (_wrapper.UpdateWindowList(_filter) <=  _windowsCount)
+                    if (_wrapper.UpdateWindowList(_filter) <= _windowsCount)
                     {
                         Log.Information("Time Doctor window closed");
                         break;
                     }
 
-                    if (GetIdleTime() < TimeSpan.FromMilliseconds(400))
-                    {
-                        Log.Information("User is active");
-                        break;
-                    }
+                    // if (GetIdleTime() < TimeSpan.FromMilliseconds(400))
+                    // {
+                    //     Log.Information("User is active");
+                    //     break;
+                    // }
 
                     if (DateTime.Now - start > TimeSpan.FromMinutes(1))
                     {
@@ -124,6 +135,17 @@ namespace TimeDoctorAlert
             public List<(int Frequency, int Duration)> Notes { get; set; } = [];
             public int RepeatCount { get; set; }
             public int PauseAfter { get; set; }
+        }
+
+        private async Task Play(CancellationToken cancellationToken)
+        {
+            using WaveStream waveStream = new Mp3FileReader(new MemoryStream(Properties.Resources.imperskij_marsh_8bit));
+            using WaveOutEvent waveOut = new WaveOutEvent();
+            waveOut.Init(waveStream);
+            waveOut.Play();
+
+            while (cancellationToken.IsCancellationRequested == false && waveOut.PlaybackState == PlaybackState.Playing) 
+                await Task.Delay(100, cancellationToken);
         }
 
         private static async Task PlaySirenAsync(CancellationToken cancellationToken)

@@ -61,6 +61,16 @@ namespace TimeDoctorAlert.Properties {
         }
         
         /// <summary>
+        ///   Looks up a localized resource of type System.Byte[].
+        /// </summary>
+        internal static byte[] imperskij_marsh_8bit {
+            get {
+                object obj = ResourceManager.GetObject("imperskij_marsh_8bit", resourceCulture);
+                return ((byte[])(obj));
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized resource of type System.Drawing.Icon similar to (Icon).
         /// </summary>
         internal static System.Drawing.Icon logo {
@@ -71,7 +81,7 @@ namespace TimeDoctorAlert.Properties {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to http://172.27.80.1:5341.
+        ///   Looks up a localized string similar to http://crosshair.mshome.net:5341.
         /// </summary>
         internal static string SeqUrl {
             get {

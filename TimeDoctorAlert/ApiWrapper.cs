@@ -67,10 +67,15 @@ public class ApiWrapper
         var windows = new List<WindowInfo>();
         EnumWindows(delegate (IntPtr hWnd, IntPtr lParam)
         {
-            if (IsWindowVisible(hWnd))
+            try
             {
-                var windowInfo = new WindowInfo();
-                windowInfo.Handle = hWnd;
+                if (!IsWindowVisible(hWnd))
+                    return true;
+
+                var windowInfo = new WindowInfo
+                {
+                    Handle = hWnd
+                };
 
                 var sb = new StringBuilder(GetWindowTextLength(hWnd) + 1);
                 GetWindowText(hWnd, sb, sb.Capacity);
@@ -79,18 +84,22 @@ public class ApiWrapper
                 GetWindowRect(hWnd, out RECT rect);
                 windowInfo.Rect = rect;
 
-                uint processId;
-                GetWindowThreadProcessId(hWnd, out processId);
+                GetWindowThreadProcessId(hWnd, out var processId);
+
                 var process = Process.GetProcessById((int)processId);
                 windowInfo.ProcessName = process.ProcessName;
 
-                StringBuilder className = new StringBuilder(256);
+                var className = new StringBuilder(256);
                 GetClassName(hWnd, className, className.Capacity);
                 windowInfo.ClassName = className.ToString();
 
                 windowInfo.IsForeground = (hWnd == GetForegroundWindow());
 
                 windows.Add(windowInfo);
+            }
+            catch (Exception)
+            {
+                // ignored
             }
 
             return true;
@@ -110,7 +119,9 @@ public class ApiWrapper
     private List<WindowInfo> _windows = new();
     public int UpdateWindowList(Func<WindowInfo, bool> query)
     {
-        var snapshot = GetAllWindows()
+        var windows = GetAllWindows();
+
+        var snapshot = windows
             .Where(query)
             .ToList();
 
@@ -131,8 +142,8 @@ public class ApiWrapper
             Console.WriteLine();
             Console.WriteLine(DateTime.Now.ToLongTimeString());
 
-            foreach (var window in newWindows) 
-                LogWindow("OPEN",  window);
+            foreach (var window in newWindows)
+                LogWindow("OPEN", window);
 
             foreach (var window in closedWindows)
                 LogWindow("CLOSE", window);
